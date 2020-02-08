@@ -26,9 +26,11 @@ config_in_path = {
     'mobile_net_pets': 'ssd_mobilenet_v1_pets.config'
 }
 
+CONFIGS_DIR = os.path.join(__location__, 'configs')
+
 def get_config_in_path(config):
     if config in config_in_path:
-        return os.path.join(__location__, config_in_path[config])
+        return os.path.join(CONFIGS_DIR, config_in_path[config])
     else:
         raise ValueError(f'config - {config} is not supported by the library. Supported configs are - {config_in_path.keys()}')
 
