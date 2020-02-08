@@ -22,9 +22,20 @@ def get_file_paths(destn, trainFolName, testFolName, trainCsvName, testCsvName, 
     pbTextPath = os.path.join(destn, pbTextName)
     return trainPath, testPath, trainCsvPath, testCsvPath, trainTfrPath, testTfrPath, tfTrainOutDir, pbTextPath
 
+config_in_path = {
+    'mobile_net_pets': 'ssd_mobilenet_v1_pets.config'
+}
+
+def get_config_in_path(config):
+    if config in config_in_path:
+        return os.path.join(__location__, config_in_path[config])
+    else:
+        raise ValueError(f'config - {config} is not supported by the library. Supported configs are - {config_in_path.keys()}')
+
+
 def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str = None, ratio:float=0.8, imgFmt:str='.jpg', testFolName='valid', 
             trainFolName='train', trainCsvName='train.csv', testCsvName='valid.csv', trainTfrName='train.record', testTfrName='valid.record', 
-            trainOutDirName='trainOutput', pbTextName='obj_det.pbtxt', configInPath='ssd_mobilenet_v1_pets.config', 
+            trainOutDirName='trainOutput', pbTextName='obj_det.pbtxt', config='mobile_net_pets', 
             configOutName='ssd_mobilenet_v1.config', inferenceDir='inference_graph', batchSize=24, modelFilePrefix='model.ckpt'):
     '''
     imgDir :: string - directory containing images and labels labelled in PASCAL VOC format
@@ -40,7 +51,7 @@ def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str 
     trainPath, testPath, trainCsvPath, testCsvPath, trainTfrPath, testTfrPath, tfTrainOutDir, pbTextPath = get_file_paths(destn, trainFolName, 
             testFolName, trainCsvName, testCsvName, trainTfrName, testTfrName, trainOutDirName, pbTextName)
 
-    configInPath, configOutPath = configInPath, os.path.join(destn, configOutName)
+    configOutPath = os.path.join(destn, configOutName)
     trainDf = xml_to_df(trainPath)
     testDf = xml_to_df(testPath)
     trainDf.to_csv(trainCsvPath , index=None)
@@ -62,7 +73,7 @@ def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str 
     # TODO - AGAIN, assumes that trainDf contains all the classes. Might not be the case, especially in small datasets. 
     # i.e. there might be a class in validation set which wasn't present in the training set.
     numClasses, numTestSamples = len(trainDf['class'].unique()), testDf.shape[0]
-    configInPath = os.path.join(__location__, configInPath)
+    configInPath = get_config_in_path(config)
     writeConfigFile(configInPath, configOutPath, 
             genConfPlaceholders(numClasses, 
                 os.path.abspath(preTrainedModelPath), 
