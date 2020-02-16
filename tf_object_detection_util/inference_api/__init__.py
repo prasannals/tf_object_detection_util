@@ -37,9 +37,8 @@ def load_graph(path_to_frozen_graph):
             
     return detection_graph
 
-def run_inference_for_single_image(image, graph):
+def run_inference_for_single_image(image, graph, sess):
   with graph.as_default():
-    with tf.Session() as sess:
       # Get handles to input and output tensors
       ops = tf.get_default_graph().get_operations()
       all_tensor_names = {output.name for op in ops for output in op.outputs}
@@ -104,10 +103,11 @@ class TFInference:
         # are anyway depending on the Tensorflow Object Detection API.
         self.idx_to_labels = label_map_util.create_category_index_from_labelmap(str(self.path_to_pbtxt), 
                                     use_display_name=True)
+        self.sess = tf.Session(graph=self.graph)
     
     def predict(self, img_path, visualize=False):
         image = tf_open_image(img_path)
-        output_dict = run_inference_for_single_image(image, self.graph)
+        output_dict = run_inference_for_single_image(image, self.graph, self.sess)
         output_dict['detection_classes_translated'] = translate_detection_class(
                     output_dict['detection_classes'], self.idx_to_labels)
 
@@ -125,5 +125,8 @@ class TFInference:
         output_dict = keep_detected_boxes(output_dict)
 
         return output_dict, image
+
+    def close(self):
+        self.sess.close()
 
 
