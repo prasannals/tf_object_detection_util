@@ -5,7 +5,7 @@ package_data = {
 }
 
 setup(name='tf_object_detection_util',
-      version='0.1.5',
+      version='0.1.6',
       description='A library to make Object Detection using Tensorflow Object Detection API easier.',
       url='https://github.com/prasannals/tf_object_detection_util',
       author='Prasanna Lakkur Subramanyam',

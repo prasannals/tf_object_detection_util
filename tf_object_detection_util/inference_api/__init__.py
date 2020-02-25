@@ -104,23 +104,46 @@ class TFInference:
         self.idx_to_labels = label_map_util.create_category_index_from_labelmap(str(self.path_to_pbtxt), 
                                     use_display_name=True)
         self.sess = tf.Session(graph=self.graph)
+
+    def visualize_pred(self, pred:'the prediction obtained from "predict" method',
+        img:'numpy array (image) or tuple of (height, width). If tuple, black image of specified height and width is generated.'=None):
+        if img is None:
+            img = np.zeros((pred['img_height'], pred['img_width'], 3), dtype=np.uint8)
+        else:
+            img = img.copy()
+
+        vis_util.visualize_boxes_and_labels_on_image_array(
+              img,
+              pred['detection_boxes'],
+              pred['detection_classes'],
+              pred['detection_scores'],
+              self.idx_to_labels,
+              instance_masks=pred.get('detection_masks'),
+              use_normalized_coordinates=True,
+              line_thickness=8)
+        
+        return img
     
     def predict(self, img_path, visualize=False):
         image = tf_open_image(img_path)
         output_dict = run_inference_for_single_image(image, self.graph, self.sess)
         output_dict['detection_classes_translated'] = translate_detection_class(
                     output_dict['detection_classes'], self.idx_to_labels)
+        output_dict['img_height'] = image.shape[0]
+        output_dict['img_width'] = image.shape[1]
 
         if visualize:
-            vis_util.visualize_boxes_and_labels_on_image_array(
-              image,
-              output_dict['detection_boxes'],
-              output_dict['detection_classes'],
-              output_dict['detection_scores'],
-              self.idx_to_labels,
-              instance_masks=output_dict.get('detection_masks'),
-              use_normalized_coordinates=True,
-              line_thickness=8)
+            image = self.visualize_pred(output_dict, image)
+
+            # vis_util.visualize_boxes_and_labels_on_image_array(
+            #   image,
+            #   output_dict['detection_boxes'],
+            #   output_dict['detection_classes'],
+            #   output_dict['detection_scores'],
+            #   self.idx_to_labels,
+            #   instance_masks=output_dict.get('detection_masks'),
+            #   use_normalized_coordinates=True,
+            #   line_thickness=8)
         
         output_dict = keep_detected_boxes(output_dict)
 
