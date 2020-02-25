@@ -8,6 +8,9 @@ from functools import reduce
 from .generate_tfrecord import genTfr
 import subprocess
 from .util import vocTrainTestSplit, xml_to_df
+import pdb
+import sys
+import signal
 
 MODEL_FILE_PLACEHOLDER = 'YOUR_MODEL_FILE'
 
@@ -23,7 +26,8 @@ def get_file_paths(destn, trainFolName, testFolName, trainCsvName, testCsvName, 
     return trainPath, testPath, trainCsvPath, testCsvPath, trainTfrPath, testTfrPath, tfTrainOutDir, pbTextPath
 
 config_in_path = {
-    'mobile_net_pets': 'ssd_mobilenet_v1_pets.config'
+    'mobile_net_pets': 'ssd_mobilenet_v1_pets.config',
+    'faster_rcnn_open_images':'faster_rcnn_open_images.config'
 }
 
 CONFIGS_DIR = os.path.join(__location__, 'configs')
@@ -37,8 +41,8 @@ def get_config_in_path(config):
 
 def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str = None, ratio:float=0.8, imgFmt:str='.jpg', testFolName='valid', 
             trainFolName='train', trainCsvName='train.csv', testCsvName='valid.csv', trainTfrName='train.record', testTfrName='valid.record', 
-            trainOutDirName='trainOutput', pbTextName='obj_det.pbtxt', config='mobile_net_pets', 
-            configOutName='ssd_mobilenet_v1.config', inferenceDir='inference_graph', batchSize=24, modelFilePrefix='model.ckpt'):
+            trainOutDirName='trainOutput', pbTextName='obj_det.pbtxt', config='mobile_net_pets', inferenceDir='inference_graph', 
+            batchSize=24, modelFilePrefix='model.ckpt', exec_train:'bool, if True, executes training command'=True):
     '''
     imgDir :: string - directory containing images and labels labelled in PASCAL VOC format
     preTrainedModelPath - string containing the path to the pretrained model that needs to be fine tuned
@@ -53,7 +57,7 @@ def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str 
     trainPath, testPath, trainCsvPath, testCsvPath, trainTfrPath, testTfrPath, tfTrainOutDir, pbTextPath = get_file_paths(destn, trainFolName, 
             testFolName, trainCsvName, testCsvName, trainTfrName, testTfrName, trainOutDirName, pbTextName)
 
-    configOutPath = os.path.join(destn, configOutName)
+    configOutPath = os.path.join(destn, config_in_path[config])
     trainDf = xml_to_df(trainPath)
     testDf = xml_to_df(testPath)
     trainDf.to_csv(trainCsvPath , index=None)
@@ -85,43 +89,50 @@ def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str 
                 numTestSamples,
                 batchSize=batchSize)
             )
-    trainingCmd = 'python {2} --logtostderr --train_dir={0} --pipeline_config_path={1}'.format(
-        os.path.abspath(tfTrainOutDir), 
-        os.path.abspath(configOutPath), 
-        os.path.join(tfObjectDetFolder, 'legacy', 'train.py'))
+    # trainingCmd = '{3} {2} --logtostderr --train_dir={0} --pipeline_config_path={1}'.format(
+    #     os.path.abspath(tfTrainOutDir), 
+    #     os.path.abspath(configOutPath), 
+    #     os.path.join(tfObjectDetFolder, 'legacy', 'train.py'), sys.executable)
+    trainingCmd = [sys.executable, os.path.join(tfObjectDetFolder, 'legacy', 'train.py'), '--logtostderr', '--train_dir', 
+                    os.path.abspath(tfTrainOutDir), '--pipeline_config_path', os.path.abspath(configOutPath)]
     inferencePath = os.path.join(destn, inferenceDir)
-    inferenceCmd = 'python {3} --input_type image_tensor --pipeline_config_path {0} --trained_checkpoint_prefix {1} --output_directory {2}'.format(
+    inferenceCmd = '{4} {3} --input_type image_tensor --pipeline_config_path {0} --trained_checkpoint_prefix {1} --output_directory {2}'.format(
         os.path.abspath(configOutPath), 
         os.path.abspath(tfTrainOutDir) + '/' + MODEL_FILE_PLACEHOLDER,
         os.path.abspath(inferencePath),
-        os.path.join(tfObjectDetFolder, 'export_inference_graph.py'))
+        os.path.join(tfObjectDetFolder, 'export_inference_graph.py'),
+        sys.executable)
 
-    print('For training (from the object_detection/legacy directory) :')
-    print(trainingCmd)
-    print()
-    print('To generate inference graph (after training) (from the object_detection directory) :')
+    # inferenceCmd = [sys.executable, os.path.join(tfObjectDetFolder, 'export_inference_graph.py'), '--input_type', 'image_tensor', 
+    #     '--pipeline_config_path', os.path.abspath(configOutPath), '--trained_checkpoint_prefix', 
+    #     os.path.abspath(tfTrainOutDir) + '/' + MODEL_FILE_PLACEHOLDER, '--output_directory', os.path.abspath(inferencePath)]
+
+    print('\n\nFor training, use the command - \n')
+    print(' '.join(trainingCmd))
+    print('\n\nTo generate inference graph (after training) use the command :')
     print(inferenceCmd)
 
     #python train.py --logtostderr --train_dir=/home/prasannals/Downloads/handsup/data --pipeline_config_path=/home/prasannals/Downloads/handsup/data/TFRConv/ssd_mobilenet_v1_pets.config
     #python export_inference_graph.py --input_type image_tensor --pipeline_config_path /home/prasannals/Downloads/handsup/data/TFRConv/ssd_mobilenet_v1_pets.config --trained_checkpoint_prefix /home/prasannals/Downloads/handsup/data/model.ckpt-4733 --output_directory /home/prasannals/Downloads/handsup/data/TFRConv/inference_graph
 
-    try:
-        process = subprocess.Popen(trainingCmd, shell=True, stdout=subprocess.PIPE)
-        process.wait()
-    except KeyboardInterrupt:
-        print('Training done')
-        inferenceCmd = inferenceCmd.replace(MODEL_FILE_PLACEHOLDER, findLatestModel(tfTrainOutDir, modelFilePrefix))
-        process = subprocess.Popen(inferenceCmd, shell=True, stdout=subprocess.PIPE)
-        process.wait()
+    if exec_train:
+        try:
+            process = subprocess.Popen(trainingCmd, stdout=subprocess.PIPE)
+            process.wait()
+        except KeyboardInterrupt:
+            os.kill(process.pid, signal.SIGTERM)
+            process.wait()
+            inferenceCmd = inferenceCmd.replace(MODEL_FILE_PLACEHOLDER, findLatestModel(tfTrainOutDir, modelFilePrefix))
+            # pdb.set_trace()
+            # process = subprocess.Popen(inferenceCmd, shell=True, stdout=subprocess.PIPE)
+            # process.wait()
 
-        print('Inference graph written to {0}'.format(inferencePath))
+            # print('Inference graph written to {0}'.format(inferencePath))
 
-        print('Training command used - ')
-        print(trainingCmd)
-        print('Inference command used - ')
-        print(inferenceCmd)
-
-        return (os.path.abspath(inferencePath), os.path.abspath(pbTextPath), numClasses)
+            print('\n\nTraining command used - \n')
+            print(' '.join(trainingCmd))
+            print('\n\nExecute the following command to generate the inference graph - \n')
+            print(inferenceCmd)
 
 
 def findLatestModel(tfTrainOutDir, modelFilePrefix):
