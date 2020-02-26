@@ -18,6 +18,8 @@ from object_detection.utils import visualization_utils as vis_util
 
 def tf_open_image(path):
     image = Image.open(path)
+    if image.mode != 'RGB':
+        image = image.convert("RGB")
     image_np = load_image_into_numpy_array(image)
     return image_np
 
