@@ -11,6 +11,7 @@ from collections import defaultdict
 from io import StringIO
 from matplotlib import pyplot as plt
 from PIL import Image
+from pathlib import Path
 
 from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
@@ -126,8 +127,23 @@ class TFInference:
         
         return img
     
-    def predict(self, img_path, visualize=False):
-        image = tf_open_image(img_path)
+    def predict(self, image, visualize=False):
+        '''
+        image : string, pathlib.Path or np.ndarray - If string or Path, image is read from the specified location
+            if np.ndarray, the image is expected to be of shape (height, width, 3). The values should be in the range 0-255
+            type should be np.uint8
+        visualize : boolean - if True, visualizes the bounding box and returns the image as a numpy array
+
+        returns 
+        output_dict : dict - results obtained from the model
+        image : np.ndarray - a copy of the image passed in along with the visualization of the bounding boxes on the image
+        '''
+        if (type(image) == str) or (type(image) == Path):
+            image = tf_open_image(image)
+        elif visualize == True:
+            # copy so as to not overwrite the original image when visualizing
+            image = np.copy(image)
+        
         output_dict = run_inference_for_single_image(image, self.graph, self.sess)
         output_dict['detection_classes_translated'] = translate_detection_class(
                     output_dict['detection_classes'], self.idx_to_labels)
@@ -136,16 +152,6 @@ class TFInference:
 
         if visualize:
             image = self.visualize_pred(output_dict, image)
-
-            # vis_util.visualize_boxes_and_labels_on_image_array(
-            #   image,
-            #   output_dict['detection_boxes'],
-            #   output_dict['detection_classes'],
-            #   output_dict['detection_scores'],
-            #   self.idx_to_labels,
-            #   instance_masks=output_dict.get('detection_masks'),
-            #   use_normalized_coordinates=True,
-            #   line_thickness=8)
         
         output_dict = keep_detected_boxes(output_dict)
 
