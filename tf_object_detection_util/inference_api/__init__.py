@@ -130,8 +130,8 @@ class TFInference:
     def predict(self, image, visualize=False):
         '''
         image : string, pathlib.Path or np.ndarray - If string or Path, image is read from the specified location
-            if np.ndarray, the image is expected to be of shape (height, width, 3). The values should be in the range 0-255
-            type should be np.uint8
+            if np.ndarray, the image is expected to be an RGB image of shape (height, width, 3). The values should be in the range 0-255
+            dtype should be np.uint8
         visualize : boolean - if True, visualizes the bounding box and returns the image as a numpy array
 
         returns 
