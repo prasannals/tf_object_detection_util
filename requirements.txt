@@ -1,7 +1,7 @@
 pandas==1.0.0
 numpy==1.18.1
 six==1.14.0
-tensorflow-gpu==1.9.0
+tensorflow-gpu==1.15.2
 matplotlib==3.1.2
 opencv_python==4.1.2.30
 Pillow==7.0.0
