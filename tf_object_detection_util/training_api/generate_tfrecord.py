@@ -1,21 +1,5 @@
 """
-Usage:
-  # From tensorflow/models/
-  # Create train data:
-  python generate_tfrecord.py --csv_input=data/train_labels.csv  --output_path=train.record
-
-  python generate_tfrecord.py --csv_input=TFRConv/train.csv --output_path=TFRConv/train.record --image_dir=TFRConv/train/
-
-  # Create test data:
-  python generate_tfrecord.py --csv_input=data/test_labels.csv  --output_path=test.record
-
-  python generate_tfrecord.py --csv_input=TFRConv/valid.csv --output_path=TFRConv/valid.record --image_dir=TFRConv/valid/
-
-  
-  
-  python train.py --logtostderr --train_dir=/home/prasannals/Downloads/handsup/data --pipeline_config_path=/home/prasannals/Downloads/handsup/data/TFRConv/ssd_mobilenet_v1_pets.config
-
-  python export_inference_graph.py --input_type image_tensor --pipeline_config_path /home/prasannals/Downloads/handsup/data/TFRConv/ssd_mobilenet_v1_pets.config --trained_checkpoint_prefix /home/prasannals/Downloads/handsup/data/model.ckpt-4733 --output_directory /home/prasannals/Downloads/handsup/data/TFRConv/inference_graph
+Parts of the file taken from - https://github.com/datitran/raccoon_dataset
 """
 from __future__ import division
 from __future__ import print_function
@@ -76,10 +60,16 @@ def create_tf_example(group, path, class_text_to_int):
     }))
     return tf_example
 
-def genTfr(outputPath, imageDir, csvInput, catDict):
+def genTfr(outputPath:'str - output file path (absolute or relative path of the output file). TF Record will be written to this file.', 
+            imageDir:'str - directory containing the images and their xml annotations', 
+            train_csv_path:'str - csv file containing the training annotations', 
+            catDict:'dict - dictionary of mappings from all unique object types to a unique int'):
+    '''
+    Generates and saves the TF Record given the above inputs.
+    '''
     writer = tf.python_io.TFRecordWriter(outputPath)
     path = os.path.join(imageDir)
-    examples = pd.read_csv(csvInput)
+    examples = pd.read_csv(train_csv_path)
     grouped = split(examples, 'filename')
     for group in grouped:
         tf_example = create_tf_example(group, path, lambda label : catDict.get(label, None) )

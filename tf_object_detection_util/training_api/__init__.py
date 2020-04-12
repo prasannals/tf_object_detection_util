@@ -25,6 +25,7 @@ def get_file_paths(destn, trainFolName, testFolName, trainCsvName, testCsvName, 
     pbTextPath = os.path.join(destn, pbTextName)
     return trainPath, testPath, trainCsvPath, testCsvPath, trainTfrPath, testTfrPath, tfTrainOutDir, pbTextPath
 
+# mapping from "config" parameter of "train" function to actual config files they correspond to.
 config_in_path = {
     'mobile_net_pets': 'ssd_mobilenet_v1_pets.config',
     'faster_rcnn_open_images':'faster_rcnn_open_images.config',
@@ -153,13 +154,18 @@ def train(imgDir:str, preTrainedModelPath:str, tfObjectDetFolder:str, destn:str 
             print(inferenceCmd)
 
 
-def findLatestModel(tfTrainOutDir, modelFilePrefix):
+def findLatestModel(tfTrainOutDir:'str - the folder containing the training output (model files etc.)', 
+                    modelFilePrefix:'the common prefix of all the models (ex. "model.ckpt" in "model.ckpt-8100") '
+                    ) -> 'str - the filename of the latest file (most number of epochs) in "tfTrainOutDir"':
     return modelFilePrefix + '-' + str(sorted(list( 
         map( lambda f: int(f[:f.index('.')]) , 
             map( lambda f: f[f.index('-')+1:] ,
                 filter(lambda f: f.startswith(modelFilePrefix), os.listdir(tfTrainOutDir))))))[-1])
 
-def writeConfigFile(inPath, outPath, values, prefix='$'):
+def writeConfigFile(inPath:'str - path to the template config', 
+            outPath:'str - file location and name for the output file', 
+            values:'dict(str -> str) - mapping of template variable names to their values', 
+            prefix:'str:prefix used before the template variable names'='$'):
     confStr = None
     with open(inPath) as f:
         confStr = f.read()
@@ -168,6 +174,9 @@ def writeConfigFile(inPath, outPath, values, prefix='$'):
         f.write(out)
 
 def configFileFormat(inpStr, values, prefix="$"):
+    '''
+    replaces the template variables with their values
+    '''
     return reduce(lambda s, key: s.replace(prefix + key, str(values[key]) ), values.keys(), inpStr)
 
 def genConfPlaceholders(numClasses, preTrainedModelPath, trainTfrPath, testTfrPath, pbTextPath, numTestSamples, batchSize=24 ):
