@@ -96,6 +96,11 @@ def keep_detected_boxes(output_dict):
 
     return output_dict
 
+def np_if_not(arr):
+    if arr is None:
+        return None
+    return arr if type(arr) == np.ndarray else np.array(arr)
+
 class TFInference:
     def __init__(self, path_to_frozen_graph, path_to_pbtxt):
         # TODO make path_to_pbtxt optional. Return raw predictions if path_to_pbtxt is None
@@ -117,11 +122,11 @@ class TFInference:
 
         vis_util.visualize_boxes_and_labels_on_image_array(
               img,
-              pred['detection_boxes'],
-              pred['detection_classes'],
-              pred['detection_scores'],
+              np_if_not(pred['detection_boxes']) ,
+              np_if_not(pred['detection_classes']) ,
+              np_if_not(pred['detection_scores']) ,
               self.idx_to_labels,
-              instance_masks=pred.get('detection_masks'),
+              instance_masks=np_if_not(pred.get('detection_masks')) ,
               use_normalized_coordinates=True,
               line_thickness=8)
         
