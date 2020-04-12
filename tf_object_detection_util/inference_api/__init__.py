@@ -17,7 +17,10 @@ from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
 
-def tf_open_image(path):
+def tf_open_image(path:'str or pathlib.Path - path to the image to be opened') -> 'np.ndarray':
+    '''
+    reads the image in "path" as an RGB image and returns the image as a numpy ndarray of shape (height, width, 3)
+    '''
     image = Image.open(path)
     if image.mode != 'RGB':
         image = image.convert("RGB")
@@ -25,11 +28,18 @@ def tf_open_image(path):
     return image_np
 
 def load_image_into_numpy_array(image):
-  (im_width, im_height) = image.size
-  return np.array(image.getdata()).reshape(
-      (im_height, im_width, 3)).astype(np.uint8)
+    '''
+    converts a PIL Image (return provided by Image.open()) into a numpy array of 
+    8 bit unsigned ints of size (height, width, 3)
+    '''
+    (im_width, im_height) = image.size
+    return np.array(image.getdata()).reshape(
+        (im_height, im_width, 3)).astype(np.uint8)
 
 def load_graph(path_to_frozen_graph):
+    '''
+    loads tensorflow frozen inference graph in the passed in path and returns the graph
+    '''
     detection_graph = tf.Graph()
     with detection_graph.as_default():
         od_graph_def = tf.GraphDef()
@@ -40,7 +50,9 @@ def load_graph(path_to_frozen_graph):
             
     return detection_graph
 
-def run_inference_for_single_image(image, graph, sess):
+def run_inference_for_single_image(image:'np.ndarray of shape (height, width, 3)', 
+                                graph:'TensorFlow Graph', sess:'tensorflow Session object'
+                                ) -> 'dict - dictionary of outputs':
   with graph.as_default():
       # Get handles to input and output tensors
       ops = tf.get_default_graph().get_operations()
@@ -85,11 +97,18 @@ def run_inference_for_single_image(image, graph, sess):
         output_dict['detection_masks'] = output_dict['detection_masks'][0]
   return output_dict
 
-def translate_detection_class(detection_classes, idx_to_label):
+def translate_detection_class(detection_classes:'list(int)', idx_to_label:'dict(int -> str)'
+                ) -> 'list(str) - list of class names for the list of class indicies passed in':
     return [idx_to_label[i]['name'] for i in detection_classes ]
 
 
 def keep_detected_boxes(output_dict):
+    '''
+    Sometimes there are more entries in output fields than there are number of detections.
+    This function removes the extra outputs.
+
+    WARNING - performs change inplace
+    '''
     num_detections = output_dict['num_detections']
     for k in ['detection_boxes', 'detection_scores', 'detection_classes', 'detection_classes_translated']:
         output_dict[k] = output_dict[k][:num_detections]
@@ -97,6 +116,10 @@ def keep_detected_boxes(output_dict):
     return output_dict
 
 def np_if_not(arr):
+    '''
+    converts arr to a numpy array if it isn't already one. 
+    If arr is already a numpy array, returns the same object.
+    '''
     if arr is None:
         return None
     return arr if type(arr) == np.ndarray else np.array(arr)
