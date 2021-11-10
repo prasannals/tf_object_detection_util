@@ -17,7 +17,7 @@ setup(name='tf_object_detection_util',
             'pandas',
             'numpy',
             'six',
-            'tensorflow-gpu==1.9.0',
+            'tensorflow-gpu==2.5.2',
             'matplotlib',
             'opencv_python>=4.1.2.30',
             'Pillow>=7.0.0'
